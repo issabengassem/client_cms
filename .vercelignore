@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+dashboard/.env
+dashboard/.env.*
+!dashboard/.env.example
+dashboard/node_modules
+dashboard/.next
+dashboard/*.tsbuildinfo
+dashboard/*.log
+dashboard/cms-onboarder.skill

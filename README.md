@@ -2,6 +2,12 @@
 
 Reusable CMS dashboard for managing content across separately deployed client websites.
 
+## Repository and deployment
+
+Public source: https://github.com/issabengassem/client_cms
+
+The Vercel project is `client-cms`, configured for Next.js with `dashboard` as its root directory. Run `vercel --prod` from this repository root after linking the project. Configure `MONGODB_URI`, `MONGODB_DB`, `SESSION_SECRET`, and `ADMIN_API_TOKEN` in Vercel production environment settings before deployment. Local environment files are excluded from Git and deployment uploads.
+
 ## Structure
 
 - `dashboard/` is the central Next.js application. It is the only component that connects to MongoDB.
