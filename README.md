@@ -50,3 +50,9 @@ The active dashboard runs at http://localhost:3100. TypeScript passed. Read-only
 The dashboard was copied from `C:\Bureau\LLMS\CLAUDE\claude_code\cms_core`. Generated dependencies/build output and the source `.env.local` were excluded; install dependencies in this workspace and configure fresh credentials here.
 
 Browser follow-up: Issa signed in successfully in Brave at http://localhost:3100/dashboard. The authenticated page displayed his account, the empty sites list, and the registration form. Two development issues were indicated in the browser; their current details were not verified. No site registration or content changes were made.
+
+## Production status - 2026-09-23
+
+Live CMS: https://client-cms-nine.vercel.app
+
+Published with gh to the public client_cms repository and deployed using vercel --prod. Local and Vercel production builds passed. Live checks passed for the login page, signed-out dashboard redirect, protected sites API, and database-backed invalid API-key rejection. Production settings are stored as Vercel secrets. Content editing/publishing and browser password login on the production domain were not exercised in this deployment check.

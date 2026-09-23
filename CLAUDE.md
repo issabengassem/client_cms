@@ -1,4 +1,4 @@
-﻿# Central CMS project instructions
+# Central CMS project instructions
 
 ## Purpose
 
@@ -21,7 +21,7 @@ Read `README.md` and `dashboard/README.md`, then inspect relevant implementation
 
 The core lacks enforced editable-field schemas, deterministic Guardian validation, and operator permissions scoped to individual client sites. Admin/editor labels do not provide client isolation. Rich content editing, image upload, full preview, AI assistance, and key rotation are not established features. The public content handler does not implement the preview behavior mentioned in its comment.
 
-Prior checks confirmed login, MongoDB access, and dashboard reads, not the full editing/publishing lifecycle. Verify current behavior before claiming it works. A production CMS URL and Vercel linkage have not been verified in this workspace.
+Prior checks confirmed login, MongoDB access, and dashboard reads, not the full editing/publishing lifecycle. Verify current behavior before claiming it works. Production: https://client-cms-nine.vercel.app (Vercel project client-cms; root dashboard). Deployment and read-only authentication/database checks passed on 2026-09-23.
 
 ## Website configuration and onboarding
 
