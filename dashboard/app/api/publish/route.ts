@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { getSession } from "@/lib/session";
 import { triggerRevalidation } from "@/lib/revalidate";
+import { publishDraft, type PublishStore } from "@/lib/publishDraft";
 import type { ContentDoc, SnapshotDoc, SiteDoc, AuditLogDoc } from "@/lib/types";
 
 // POST /api/publish { siteId, slug, label? }
@@ -28,53 +29,52 @@ export async function POST(req: NextRequest) {
   const { siteId, slug } = body;
   const label: string | undefined = typeof body.label === "string" ? body.label : undefined;
 
-  const db = await getDb();
-
-  const contentDoc = await db.collection<ContentDoc>("content").findOne({ siteId, slug });
-  if (!contentDoc || Object.keys(contentDoc.draft ?? {}).length === 0) {
-    return NextResponse.json({ error: "No draft content to publish for this page" }, { status: 400 });
+  if (!ObjectId.isValid(siteId)) {
+    return NextResponse.json({ error: "Invalid siteId" }, { status: 400 });
   }
 
-  const snapshot: SnapshotDoc = {
+  const db = await getDb();
+  const store: PublishStore = {
+    findSite: (id) =>
+      db.collection<SiteDoc>("sites").findOne({ _id: new ObjectId(id) } as never),
+    findContent: (id, pageSlug) =>
+      db.collection<ContentDoc>("content").findOne({ siteId: id, slug: pageSlug }),
+    async createSnapshot(snapshot) {
+      const result = await db.collection<SnapshotDoc>("snapshots").insertOne(snapshot);
+      return result.insertedId.toString();
+    },
+    async setPublished(id, pageSlug, content, snapshotId, updatedAt) {
+      await db.collection<ContentDoc>("content").updateOne(
+        { siteId: id, slug: pageSlug },
+        {
+          $set: {
+            published: content,
+            publishedSnapshotId: snapshotId,
+            updatedAt,
+          },
+        }
+      );
+    },
+    async recordAudit(event) {
+      await db.collection<AuditLogDoc>("audit_log").insertOne(event);
+    },
+  };
+
+  const result = await publishDraft(store, {
     siteId,
     slug,
-    content: contentDoc.draft,
     label,
-    createdAt: new Date(),
-    createdBy: session.email,
-  };
-  const snapshotResult = await db.collection<SnapshotDoc>("snapshots").insertOne(snapshot);
-
-  await db.collection<ContentDoc>("content").updateOne(
-    { siteId, slug },
-    {
-      $set: {
-        published: contentDoc.draft,
-        publishedSnapshotId: snapshotResult.insertedId.toString(),
-        updatedAt: new Date(),
-      },
-    }
-  );
-
-  await db.collection<AuditLogDoc>("audit_log").insertOne({
-    siteId,
-    action: "publish",
     actor: session.email,
-    details: `slug=${slug} snapshot=${snapshotResult.insertedId.toString()}`,
-    createdAt: new Date(),
   });
-
-  let revalidated = false;
-  if (ObjectId.isValid(siteId)) {
-    const site = await db.collection<SiteDoc>("sites").findOne({ _id: new ObjectId(siteId) } as never);
-    if (site) {
-      revalidated = await triggerRevalidation(site, slug);
-    }
+  if (!result.ok) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
+
+  const revalidated = await triggerRevalidation(result.site, slug);
 
   return NextResponse.json({
     ok: true,
-    snapshotId: snapshotResult.insertedId.toString(),
+    snapshotId: result.snapshotId,
     revalidated,
   });
 }

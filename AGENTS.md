@@ -11,17 +11,17 @@ Read `README.md` and `dashboard/README.md`, then inspect relevant implementation
 - Next.js App Router, React, TypeScript, and the MongoDB driver; run application commands from `dashboard/`.
 - Authentication: `app/login/`, `lib/session.ts`, `lib/crypto.ts`, and `proxy.ts`. Passwords use bcrypt; sessions use signed JWT cookies. Proxy checks cookie presence; routes/pages verify sessions.
 - `scripts/create-admin-user.mjs` can replace an existing account's password. Do not run it for an existing user without authorization to reset that account.
-- `lib/mongodb.ts` and `lib/types.ts` define access and document shapes for `sites`, `content`, `snapshots`, `users`, and `audit_log`. Content uses dotted field keys mapped to `{ type, value }`, scoped by canonical `siteId` and page `slug`.
-- `app/dashboard/` provides site registration and read-oriented site/page views. Registration also exists at `POST /api/sites`; keep the API and server action consistent.
+- `lib/mongodb.ts` and `lib/types.ts` define access and document shapes for `sites`, `content`, `snapshots`, `users`, and `audit_log`. Content uses dotted field keys mapped to `{ type, value }`, scoped by canonical `siteId` and page `slug`. Each site can store a server-enforced `contentSchema`; an empty or missing schema denies draft writes.
+- `app/dashboard/` provides site registration, an overview, activity views, schema-driven site/page editing, site settings, published version history, and an admin-only read-only users list. Registration also exists at `POST /api/sites`; keep the API and server action consistent.
 - Registration accepts an operator session or `ADMIN_API_TOKEN` and returns a MongoDB-generated site ID, a one-time site API key, and a revalidation secret. Site API keys are stored hashed.
 - Operator-session APIs handle site management, draft reads/writes, snapshot history, publish, and rollback. `GET /api/public/content/[siteId]/[slug]` checks the site key, active status, and matching ID and returns published content only.
-- Publish creates a snapshot; rollback restores a matching site/page snapshot without replacing the draft or deleting history. `lib/revalidate.ts` sends best-effort refresh requests.
+- Publish verifies the registered site, approved slug, and complete draft against the site's content schema before writing. A valid publish creates a snapshot; rollback restores a matching site/page snapshot without replacing the draft or deleting history. `lib/revalidate.ts` sends best-effort refresh requests.
 
 ## Gaps: do not present these as finished
 
-The core lacks enforced editable-field schemas, deterministic Guardian validation, and operator permissions scoped to individual client sites. Admin/editor labels do not provide client isolation. Rich content editing, image upload, full preview, AI assistance, and key rotation are not established features. The public content handler does not implement the preview behavior mentioned in its comment.
+The draft API enforces each site's configured slug, field path, field type, and basic string constraints. It does not yet provide full Guardian validation for every supported content type or operator permissions scoped to individual client sites. Admin/editor labels do not provide client isolation. Rich visual editing, image upload, full preview, multi-turn AI chat, and key rotation are not established features. The optional OpenRouter panel can propose validated field changes when server variables are configured; it cannot save or publish by itself. One live proposal passed validation in Preview on 2026-09-24. The public content handler does not implement the preview behavior mentioned in its comment.
 
-Prior checks confirmed login, MongoDB access, and dashboard reads, not the full editing/publishing lifecycle. Verify current behavior before claiming it works. Production: https://client-cms-nine.vercel.app (Vercel project client-cms; root dashboard). Deployment and read-only authentication/database checks passed on 2026-09-23.
+Local checks confirm login, MongoDB access, dashboard reads, and the Dhamna draft editing flow. Preview at https://client-iffov0cv5-issabengassem2004-8957s-projects.vercel.app confirmed admin login, overview, site editor, activity, Users, and one AI proposal. Publishing and rollback have not been exercised as part of the Dhamna editor work. Verify current behavior before claiming they work. Production: https://client-cms-nine.vercel.app (Vercel project client-cms; root dashboard). Deployment and read-only authentication/database checks passed on 2026-09-23; the redesigned editor has not been deployed to Production.
 
 ## Website configuration and onboarding
 
@@ -48,7 +48,7 @@ AI may propose structured changes through the same authorization and Guardian wo
 
 ## Secrets and authorization
 
-Reuse existing configuration. CMS variables: `MONGODB_URI`, `MONGODB_DB`, `SESSION_SECRET`, `ADMIN_API_TOKEN`. Client templates use `CMS_BASE_URL`, `CMS_SITE_ID`, `CMS_API_KEY`, and `CMS_REVALIDATE_SECRET`; verify actual integration expectations.
+Reuse existing configuration. CMS variables: `MONGODB_URI`, `MONGODB_DB`, `SESSION_SECRET`, `ADMIN_API_TOKEN`; optional AI variables: `OPENROUTER_API_KEY` (Secret) and `OPENROUTER_MODEL` (Config). Client templates use `CMS_BASE_URL`, `CMS_SITE_ID`, `CMS_API_KEY`, and `CMS_REVALIDATE_SECRET`; verify actual integration expectations.
 
 Never expose, print, log, document, or commit secret values or `.env.local`. Keep credentials out of source, browser bundles, and `NEXT_PUBLIC_*` variables. Report missing variable names without their values.
 

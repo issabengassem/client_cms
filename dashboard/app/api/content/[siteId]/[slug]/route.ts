@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 import { getSession } from "@/lib/session";
-import type { ContentDoc, ContentFieldMap } from "@/lib/types";
+import { mergeDraft, validateDraftPatch } from "@/lib/contentSchema";
+import type { AuditLogDoc, ContentDoc, SiteDoc } from "@/lib/types";
 
 type RouteParams = { params: Promise<{ siteId: string; slug: string }> };
 
@@ -20,7 +22,21 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   }
 
   const { siteId, slug } = await params;
+  if (!ObjectId.isValid(siteId)) {
+    return NextResponse.json({ error: "Invalid siteId" }, { status: 400 });
+  }
+
   const db = await getDb();
+  const site = await db
+    .collection<SiteDoc>("sites")
+    .findOne({ _id: new ObjectId(siteId) } as never);
+  if (!site) {
+    return NextResponse.json({ error: "Site not found" }, { status: 404 });
+  }
+  if (!site.contentSchema?.[slug]) {
+    return NextResponse.json({ error: `Slug '${slug}' is not approved for this site` }, { status: 400 });
+  }
+
   const doc = await db.collection<ContentDoc>("content").findOne({ siteId, slug });
 
   if (!doc) {
@@ -44,23 +60,48 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
   }
 
   const { siteId, slug } = await params;
-  const body = await req.json().catch(() => null);
+  if (!ObjectId.isValid(siteId)) {
+    return NextResponse.json({ error: "Invalid siteId" }, { status: 400 });
+  }
 
-  if (!body || typeof body.draft !== "object" || body.draft === null) {
+  const body = await req.json().catch(() => null);
+  if (!body || typeof body !== "object") {
     return NextResponse.json({ error: "Request body must include a 'draft' object" }, { status: 400 });
   }
 
-  const draft: ContentFieldMap = body.draft;
-
   const db = await getDb();
+  const site = await db
+    .collection<SiteDoc>("sites")
+    .findOne({ _id: new ObjectId(siteId) } as never);
+  if (!site) {
+    return NextResponse.json({ error: "Site not found" }, { status: 404 });
+  }
+
+  const validation = validateDraftPatch(site.contentSchema, slug, body.draft);
+  if (!validation.ok) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
+  }
+
+  const existing = await db.collection<ContentDoc>("content").findOne({ siteId, slug });
+  const draft = mergeDraft(existing?.draft, validation.draft);
+  const updatedAt = new Date();
+
   await db.collection<ContentDoc>("content").updateOne(
     { siteId, slug },
     {
-      $set: { draft, updatedAt: new Date() },
+      $set: { draft, updatedAt },
       $setOnInsert: { siteId, slug, published: null, publishedSnapshotId: null },
     },
     { upsert: true }
   );
 
-  return NextResponse.json({ ok: true });
+  await db.collection<AuditLogDoc>("audit_log").insertOne({
+    siteId,
+    action: "draft_update",
+    actor: session.email,
+    details: JSON.stringify({ slug, fields: Object.keys(validation.draft) }),
+    createdAt: updatedAt,
+  });
+
+  return NextResponse.json({ ok: true, draft });
 }

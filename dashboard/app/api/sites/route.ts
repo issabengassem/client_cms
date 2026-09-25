@@ -3,6 +3,7 @@ import { getDb } from "@/lib/mongodb";
 import { generateApiKey, hashApiKey, previewApiKey } from "@/lib/crypto";
 import { getSession } from "@/lib/session";
 import { isAdminToken } from "@/lib/siteAuth";
+import { validateContentSchema } from "@/lib/contentSchema";
 import type { SiteDoc, AuditLogDoc } from "@/lib/types";
 
 // POST /api/sites -- register a new client site.
@@ -35,6 +36,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "'name' and 'domain' cannot be empty" }, { status: 400 });
   }
 
+  const schemaResult = validateContentSchema(body.contentSchema ?? {});
+  if (!schemaResult.ok) {
+    return NextResponse.json({ error: schemaResult.error }, { status: 400 });
+  }
+
   const db = await getDb();
 
   const existing = await db.collection<SiteDoc>("sites").findOne({ domain });
@@ -50,6 +56,7 @@ export async function POST(req: NextRequest) {
     domain,
     revalidateUrl,
     revalidateSecret,
+    contentSchema: schemaResult.schema,
     apiKeyHash: hashApiKey(apiKey),
     apiKeyPreview: previewApiKey(apiKey),
     status: "active",
@@ -65,11 +72,9 @@ export async function POST(req: NextRequest) {
     createdAt: new Date(),
   });
 
-  // apiKey is returned exactly once, here, and cannot be recovered later --
-  // only its hash is stored. revalidateSecret IS recoverable (GET on this
-  // site will include it to an authorized operator), since the CMS itself
-  // needs to keep using it. If apiKey is lost, the fix is to rotate it
-  // (not implemented in this core pass; see README "Not yet built").
+  // Both generated credentials are returned only at creation. The site API
+  // excludes the stored revalidation secret on subsequent reads. The CMS
+  // retains it server-side to call the site's revalidation webhook.
   return NextResponse.json(
     {
       siteId: result.insertedId.toString(),
@@ -92,7 +97,7 @@ export async function GET() {
   const db = await getDb();
   const sites = await db
     .collection<SiteDoc>("sites")
-    .find({}, { projection: { apiKeyHash: 0 } })
+    .find({}, { projection: { apiKeyHash: 0, revalidateSecret: 0 } })
     .sort({ createdAt: -1 })
     .toArray();
 

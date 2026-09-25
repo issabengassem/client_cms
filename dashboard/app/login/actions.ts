@@ -29,7 +29,7 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
     );
     return {
       error:
-        "The CMS cannot reach its database. Check the MongoDB connection and this computer's network, then try again.",
+        "The dashboard cannot connect to its database. Your password has not been checked. Please try again shortly or ask your administrator to check the server connection.",
     };
   }
 

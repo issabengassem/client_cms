@@ -15,6 +15,18 @@ export interface ContentFieldValue {
 
 export type ContentFieldMap = Record<string, ContentFieldValue>;
 
+export interface ContentFieldRule {
+  type: ContentFieldType;
+  minLength?: number;
+  maxLength?: number;
+}
+
+export interface ContentPageSchema {
+  fields: Record<string, ContentFieldRule>;
+}
+
+export type SiteContentSchema = Record<string, ContentPageSchema>;
+
 export interface SiteDoc {
   _id?: string;
   name: string;
@@ -29,6 +41,9 @@ export interface SiteDoc {
   // site -> CMS -- keeping them separate means rotating one never affects
   // the other.
   revalidateSecret?: string;
+  // Server-enforced allowlist of page slugs, editable field paths, and
+  // accepted value shapes. A missing or empty schema denies all draft writes.
+  contentSchema?: SiteContentSchema;
   status: "active" | "paused";
   createdAt: Date;
 }
@@ -64,7 +79,7 @@ export interface UserDoc {
 export interface AuditLogDoc {
   _id?: string;
   siteId: string;
-  action: "publish" | "rollback" | "draft_update" | "site_created";
+  action: "publish" | "rollback" | "draft_update" | "site_created" | "site_updated";
   actor: string; // user email or "onboarding-skill"
   details?: string;
   createdAt: Date;

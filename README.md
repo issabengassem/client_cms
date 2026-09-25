@@ -2,6 +2,10 @@
 
 Reusable CMS dashboard for managing content across separately deployed client websites.
 
+## Current Preview — 2026-09-24
+
+The latest local dashboard changes are deployed to Vercel Preview at https://client-77pvfy9ix-issabengassem2004-8957s-projects.vercel.app . The Preview build is Ready. On Dhamna, the editor shows only the approved `home` -> `hero.eyebrow` field. Operators can ask OpenRouter for wording, compare saved text with a suggestion, and put an approved suggestion into the unsaved editor. They must still save a draft and explicitly publish. A local browser check generated a suggestion, applied it to the unsaved form, then restored the original text without saving or publishing. A layout request was rejected; the final build improves its out-of-scope message. TypeScript, 19 tests, and local and Vercel builds passed. Authenticated checks of this particular Preview URL are pending sign-in.
+
 ## Repository and deployment
 
 Public source: https://github.com/issabengassem/client_cms
@@ -11,7 +15,7 @@ The Vercel project is `client-cms`, configured for Next.js with `dashboard` as i
 ## Structure
 
 - `dashboard/` is the central Next.js application. It is the only component that connects to MongoDB.
-- `templates/cms.config.js` is an inert example, not a global config. Each onboarded website gets its own active `cms.config.js` beside its `package.json`. The config loader and server-side field enforcement still need implementation.
+- `templates/cms.config.js` is an inert example, not a global config. Each onboarded website gets its own active `cms.config.js` beside its `package.json`. The CMS stores a server-side allowlist per registered site; Dhamna's client config and loader now use the same schema shape.
 - Client websites will fetch **published** content from the dashboard API using a site-scoped API key. Never put MongoDB credentials in a client website.
 
 The dashboard stores draft and published content separately, captures snapshots on publish, and supports rollback. Each website remains its own project and deployment; the dashboard manages multiple registered sites.
@@ -37,9 +41,23 @@ module.exports = {
 };
 ```
 
-The example `dhamna` in the original request is a future integration example; the DHAMNA project has not been connected as part of adding the dashboard.
+The registered Dhamna test site uses canonical ID `6ab46563cab67088362a335e`. Its current server-side allowlist permits only `home` -> `hero.eyebrow` as text. Production now publishes the approved test value; the dashboard work does not change it.
 
-Read `AGENTS.md` for implementation facts, permission requirements, and future onboarding instructions; `CLAUDE.md` imports the same guidance. Issa will define permitted sections and fields in the next task. The next implementation step should reconcile the config/SDK contract and add server-side field validation and client isolation before enabling client editing. The bundled onboarder currently uses a different JSON configuration format.
+Read `AGENTS.md` for implementation facts, permission requirements, and future onboarding instructions; `CLAUDE.md` imports the same guidance. Issa defines permitted sections and fields during onboarding. The dashboard has a schema-driven editor; client-scoped operator permissions remain future work. The bundled onboarder currently uses a different JSON configuration format.
+
+## Dashboard phase 2 — 2026-09-24
+
+Preview deployment on 2026-09-24: https://client-iffov0cv5-issabengassem2004-8957s-projects.vercel.app . Vercel reports this deployment as Ready with target Preview. Preview-scoped MongoDB, session, and OpenRouter variables are present. Brave checks confirmed admin login, overview, Dhamna editor, activity, Users, and one OpenRouter suggestion. The suggestion was not applied or saved. Site settings, draft writes, publish, and rollback were not exercised. The local `.env.local` was excluded from the upload. Production was not redeployed or reconfigured. The `client-cms-git-main` branch URL still serves the older dashboard from GitHub, not this local Preview build.
+
+The local CMS dashboard now presents a SaaS-style overview, sidebar, site table, activity list, and per-site content workspace. The editor derives pages, sections, and fields from each registered site's content schema and saves through the protected draft API. Publishing uses the existing publish API and requires an explicit click. The optional OpenRouter panel proposes reviewed field changes; a live proposal passed validation in Preview. The CMS `.env.example` uses safe placeholders, and operator-facing site API responses no longer include the revalidation secret. Production has not been redeployed by this dashboard work.
+
+The local site workspace also has editable site settings, published version history with explicit rollback confirmation, a full audit view, and an admin-only read-only user list. Settings changes record an audit event listing changed field names only. The Users page was opened read-only in the authenticated Preview and showed the existing admin account; account changes were not attempted.
+
+## Dhamna editor check — 2026-09-24
+
+The authenticated Dhamna site detail page edits only `home` -> `hero.eyebrow` because that is its current allowlist. The editor displays current draft and published values and saves through the protected partial-draft API. Unit tests, TypeScript, the CMS production build, the Dhamna production build, and an authenticated editor integration check passed. The approved test value has since been published through the controlled workflow; the dashboard redesign did not republish it.
+
+The publish endpoint now verifies the registered site, approved slug, and complete draft schema before creating publication records. Valid behavior was tested with an in-memory store; authenticated rejection checks against the configured database confirmed that invalid targets create no snapshot or publish audit and leave Dhamna's published content unchanged. No live Dhamna publish has been executed.
 
 ## Local check — 2026-09-23
 

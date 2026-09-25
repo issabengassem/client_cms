@@ -14,7 +14,7 @@ export default function CreateSiteForm() {
       <div className="card">
         <h2>{name} registered</h2>
         <p className="subtle" style={{ marginBottom: 14 }}>
-          Save these now -- the API key in particular is shown once and cannot be recovered later, only rotated.
+          Save these now. The API key is shown once and cannot be recovered later.
         </p>
         <div className="key-reveal" style={{ marginBottom: 10 }}>
           site id&nbsp;&nbsp;{siteId}

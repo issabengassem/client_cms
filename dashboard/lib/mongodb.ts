@@ -23,15 +23,14 @@ function getClientPromise(): Promise<MongoClient> {
 
   // Reuse the client across hot reloads in dev, and across warm serverless
   // invocations in production, instead of opening a new connection per request.
-  if (process.env.NODE_ENV === "development") {
-    if (!global._mongoClientPromise) {
-      global._mongoClientPromise = new MongoClient(uri).connect();
-    }
-    return global._mongoClientPromise;
-  }
-
   if (!global._mongoClientPromise) {
-    global._mongoClientPromise = new MongoClient(uri).connect();
+    const client = new MongoClient(uri, { serverSelectionTimeoutMS: 10000 });
+    global._mongoClientPromise = client.connect().catch(async (error) => {
+      // A temporary outage must not poison every later request in this instance.
+      global._mongoClientPromise = undefined;
+      await client.close().catch(() => {});
+      throw error;
+    });
   }
   return global._mongoClientPromise;
 }

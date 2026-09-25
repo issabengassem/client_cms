@@ -50,6 +50,7 @@ export async function createSiteAction(_prevState: CreateSiteState, formData: Fo
     domain,
     revalidateUrl,
     revalidateSecret,
+    contentSchema: {},
     apiKeyHash: hashApiKey(apiKey),
     apiKeyPreview: previewApiKey(apiKey),
     status: "active",
